@@ -1,0 +1,133 @@
+{% extends "network/layout.html" %}
+
+{% block body %}
+
+    <h1 style="margin-left: 20px;">All Posts</h1>
+
+    {% if user.is_authenticated %}
+        <!-- New Post -->
+        <div class="card my-4">
+            <div class="card-body">
+                <form action="{% url 'new_post' %}" method="POST">
+                    {% csrf_token %}
+                    <div class="form-group">
+                    <label for="post-content">New Post</label>
+                    <textarea class="form-control" id="post-content" name="content" rows="5" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </form>
+            </div>
+        </div>
+  
+    {% endif %}
+
+    {% for post in page_obj %}
+    <div class="card my-3">
+      <div class="card-body">
+        <h5 class="card-title"><a href="{% url 'profile' user_id=post.author.id %}">@{{ post.author.username }}</a></h5>
+        <p class="card-text" id="content_{{post.id}}">{{ post.content }}</p>
+        <p class="card-text"><small class="text-muted">{{ post.date }}</small></p>
+        <p class="card-text"><span id="like-count-{{ post.id }}">{{ post.likes.count }}</span> Likes</p>
+        {% if user.is_authenticated %}
+            {% if post.author == user %}
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal_post_{{ post.id }}">Edit</button>
+                <div class="modal fade" id="modal_post_{{post.id}}" tabindex="-1" role="dialog" aria-labelledby="modal_post_{{ post.id }}" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                        <h5 class="modal-title" id="modal_post_{{ post.id }}">Edit Post</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <textarea class="form-control" id="textarea_{{ post.id }}" rows="3" name="content">{{ post.content }}</textarea>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary" onclick="submitHandler({{post.id}})">Save changes</button>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            {% else %}
+                <button type="button" class="btn btn-primary like-button" data-post-id="{{ post.id }}">
+                    {% if request.user in post.likes.all %}
+                        Unlike
+                    {% else %}
+                        Like
+                    {% endif %}
+                </button>
+            {% endif %}
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+        <h3 style="margin-left: 20px;">There are no posts yet.</h3>
+    {% endfor %}
+
+    <nav aria-label="Page navigation example">
+        <ul class="pagination d-flex justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a href="?page={{ page_obj.previous_page_number }}" class="page-link">&laquo; Previous</a></li>
+            {% endif %}
+            {% if page_obj.has_next %}
+            <li class="page-item"></li><a href="?page={{ page_obj.next_page_number }}" class="page-link">Next &raquo;</a></li>
+            {% endif %}
+        </ul>
+      </nav>
+    
+
+    <script>
+    function getCookie(name) {
+        const cookieValue = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+        return cookieValue ? cookieValue.pop() : '';
+    }
+    function submitHandler(id) {
+        const postContent = document.getElementById(`textarea_${id}`).value;
+        const csrfToken = getCookie('csrftoken');
+        const content = document.getElementById(`content_${id}`);
+        const modal = document.getElementById(`modal_post_${id}`);
+        fetch(`/edit/${id}`, {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                content: postContent
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            content.innerHTML = result.data;
+            modal.querySelector('.btn-close').click();
+        })
+    }
+
+    document.querySelectorAll('.like-button').forEach(function(button) {
+        button.addEventListener('click', function(event) {
+            const post_id = event.target.dataset.postId;
+            fetch(`/like/${post_id}/`, {
+                method: 'PUT',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log(result);
+                const countElement = document.querySelector(`#like-count-${post_id}`);
+                if (result.message === 'liked') {
+                    button.innerHTML = 'Unlike';
+                    countElement.innerHTML = result.likes;
+                } else if (result.message === 'unliked') {
+                    button.innerHTML = 'Like';
+                    countElement.innerHTML = result.likes;
+                }
+            })
+        });
+    });
+
+    
+</script>
+
+{% endblock %}
