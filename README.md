@@ -21,5 +21,5 @@ Users can click an "Edit" button or link on any of their own posts to edit that 
 ### "Like" and "Unlike"
 Users can click a button or link on any post to toggle whether or not they "like" that post. Using JavaScript, the server is asynchronously notified to update the like count (via a call to fetch) and then update the post's like count displayed on the page, without requiring a reload of the entire page.
 
-Acknowledgments
+## Acknowledgments
 This project is part of the CS50W course offered by Harvard University.
